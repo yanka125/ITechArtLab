@@ -2,6 +2,8 @@ import time
 from datetime import datetime
 from functools import wraps
 from uuid import uuid1
+from threading import Thread
+from queue import Queue
 
 import requests
 from bs4 import BeautifulSoup
@@ -18,7 +20,13 @@ page_url: str = "https://www.reddit.com/top/?t=month"
 chrome_path: str = "D:\chromedriver.exe"
 
 # In this variable you need to set the number of posts from which data will be collected
-number_of_posts: int = 5
+number_of_posts: int = 100
+
+elements = []
+
+q = Queue()
+
+result_list: list[dict[str, str]] = []
 
 # This variable used to access the user's url
 headers: dict[str, str] = {
@@ -49,7 +57,7 @@ def measure(func):
 def main():
     """This function configures and launches the scrapper."""
     driver = init_driver(chrome_path)
-    get_data_from_page_url(driver, page_url, number_of_posts)
+    get_data_from_page_url(driver, page_url)
     driver.quit()
 
 
@@ -86,87 +94,91 @@ def get_data_from_user_url(user_url):
         {"id": "profile--id-card--highlight-tooltip--karma"}).text
     user_cake_day: str = soup.find("span",
         {"id": "profile--id-card--highlight-tooltip--cakeday"}).text
-    return post_karma, comment_karma, user_karma, user_cake_day
+    if post_karma is None or comment_karma is None or user_karma is None or user_cake_day is None:
+        q.task_done()
+        pass
+    else:
+        return post_karma, comment_karma, user_karma, user_cake_day
 
 
-def data_to_file(result_list):
-    """This function writes the final data to a file."""
-    now: str = datetime.now().strftime("%Y%m%d%H%M")
-    with open("reddit-" + now + ".txt", "w") as file:
-        for i in range(len(result_list)):
-            file.write(str(result_list[i]) + "\n")
-
-
-def get_data_from_page_url(driver, url: str, posts_count: int):
-    """This function collects required data from posts."""
-    driver.get(url)
-    actions = ActionChains(driver)
-    # All data from posts will be placed in this list
-    result_list: list[dict[str, str]] = []
-    # This variable is used to start counting posts
-    i: int = 1  # always 1
-    while True:
-        try:
-            unique_id = uuid1().hex
-            element = driver.find_element(By.XPATH,
-                "(//div[@data-testid = 'post-container'])[" + str(i) + "]")
-            post_date: str = element.find_element(By.XPATH,
-                "(//a[@class='_3jOxDPIQ0KaOWpzvSQo-1s'])[" + str(i) + "]").text
-            post_category: str = element.find_element(By.XPATH,
-                "(//div[@class='_2mHuuvyV9doV3zwbZPtIPG']/a[@class='_3ryJoIoycVkA88fy40qNJc'])[" + str(i) + "]").text[2:]
-            number_of_votes: str = element.find_element(By.XPATH,
-                "(//div[@class='_1rZYMD_4xY3gRcSS3p8ODO _3a2ZHWaih05DgAOtvu6cIo '])[" + str(i) + "]").text
-            number_of_comments: str = element.find_element(By.XPATH,
-                "(//span[@class='FHCV02u6Cp2zYL0fhQPsO'])[" + str(i) + "]").text
-            post_url: str = element.find_element(By.XPATH,
-                "(//a[@class='_3jOxDPIQ0KaOWpzvSQo-1s'])[" + str(i) + "]").get_attribute("href")
-            user_url: str = element.find_element(By.XPATH,
-                "(//div[@class='_2mHuuvyV9doV3zwbZPtIPG']/a[@style='color: rgb(120, 124, 126);'])[" + str(i) + "]").get_attribute('href')
-            user_name: str = user_url[user_url.index('/user/') + 6:len(user_url) - 1]
-            '''Checking if all data from posts has been collected,
-            else skip this post and go back to the beginning of the loop'''
-            if post_date is None or post_category is None or number_of_votes is None \
-                    or number_of_comments is None or post_url is None or user_url is None:
-                actions.move_to_element(element).perform()
-                i += 1
-                continue
-            '''Checking if all data from user page has been collected,
-            else skip this post and go back to the beginning of the loop'''
-            try:
-                (post_karma, comment_karma, user_karma, user_cake_day) = get_data_from_user_url(user_url)
-                if post_karma is None or comment_karma is None or user_karma is None \
-                        or user_cake_day is None:
-                    actions.move_to_element(element).perform()
-                    i += 1
-                    continue
-            except Exception as _ex:
-                actions.move_to_element(element).perform()
-                i += 1
-                continue
-            # When all the data from one post is verified, add them to the result list and move to the next element
-            actions.move_to_element(element).perform()
-            i += 1
+def get_data_from_posts():
+    try:
+        element = q.get()
+        unique_id = uuid1().hex
+        post_date: str = element.find_element(By.CLASS_NAME, "_3jOxDPIQ0KaOWpzvSQo-1s").text
+        post_category: str = element.find_element(By.CLASS_NAME, "_2mHuuvyV9doV3zwbZPtIPG").text[2:]
+        number_of_votes: str = element.find_element(By.CLASS_NAME, "_1E9mcoVn4MYnuBQSVDt1gC").text
+        number_of_comments: str = element.find_element(By.CLASS_NAME, 'FHCV02u6Cp2zYL0fhQPsO').text
+        post_url: str = element.find_element(By.CLASS_NAME, '_3jOxDPIQ0KaOWpzvSQo-1s').get_attribute("href")
+        user_url: str = element.find_element(By.CLASS_NAME, '_2tbHP6ZydRpjI44J3syuqC').get_attribute("href")
+        user_name: str = user_url[user_url.index('/user/') + 6:len(user_url) - 1]
+        if unique_id is None or post_date is None or number_of_comments is None or post_category is None \
+                or number_of_votes is None or post_url is None or user_url is None or user_name == "[deleted]":
+            pass
+        elif unique_id == '' or post_date == '' or number_of_comments == '' or post_category == '' \
+                or number_of_votes == '' or post_url == '' or user_url == '' or user_name == '':
+            pass
+        else:
+            (post_karma, comment_karma, user_karma,
+             user_cake_day) = get_data_from_user_url(user_url)
+            if post_karma is None or comment_karma is None or user_karma is None or user_cake_day is None:
+                pass
             result_list.append(
                 {
                     "unique_id": unique_id,
                     "post_url": post_url,
                     "user_name": user_name,
-                    "user_karma": user_karma,
-                    "user_cake_day": user_cake_day,
-                    "post_karma": post_karma,
-                    "comment_karma": comment_karma,
                     "post_date": post_date,
                     "number_of_comments": number_of_comments,
                     "number_of_votes": number_of_votes,
-                    "post_category": post_category,
+                    "post_karma": post_karma,
+                    "comment_karma": comment_karma,
+                    "user_karma": user_karma,
+                    "user_cake_day": user_cake_day,
                 }
             )
-            if len(result_list) == posts_count:
-                data_to_file(result_list)
-                break
+        q.task_done()
+    except Exception as _ex:
+        q.task_done()
+
+
+def data_to_file(result_list):
+    """This function writes the final data to a file."""
+    now: str = datetime.now().strftime("%Y%m%d%H%M")
+    with open("reddit-" + now + ".txt", "a") as file:
+        for i in range(len(result_list)):
+            file.write(str(result_list[i]) + "\n")
+
+
+def get_data_from_page_url(driver, url: str):
+    driver.get(url)
+    actions = ActionChains(driver)
+    i = 1
+    while len(result_list) < number_of_posts:
+        try:
+            element = driver.find_element(By.XPATH, "(//div[@data-testid = 'post-container'])[" + str(i) + "]")
+            q.put(element)
+            Thread(target=get_data_from_posts).start()
+            actions.move_to_element(element).perform()
+            i += 1
         except Exception as _ex:
             print(_ex)
+
+    q.join()
+
+    sorted_list = sorted(result_list, key=lambda k: k['number_of_votes'], reverse=True)
+    data_to_file(sorted_list)
 
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+
