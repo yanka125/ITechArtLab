@@ -1,3 +1,5 @@
+import json
+import logging
 import time
 from datetime import datetime
 from functools import wraps
@@ -20,13 +22,11 @@ page_url: str = "https://www.reddit.com/top/?t=month"
 chrome_path: str = "D:\chromedriver.exe"
 
 # In this variable you need to set the number of posts from which data will be collected
-number_of_posts: int = 100
-
-elements = []
+NUMBER_OF_POSTS: int = 1
 
 q = Queue()
 
-result_list: list[dict[str, str]] = []
+result_list: list[dict] = []
 
 # This variable used to access the user's url
 headers: dict[str, str] = {
@@ -52,12 +52,24 @@ def measure(func):
 
     return _time_it
 
+def get_logger():
+    logger = logging.getLogger("threading_example")
+    logger.setLevel(logging.ERROR)
+    fh = logging.FileHandler("threading.log")
+    fmt = '%(asctime)s - %(threadName)s - %(levelname)s - %(message)s'
+    formatter = logging.Formatter(fmt)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+    return logger
+
 
 @measure
 def main():
     """This function configures and launches the scrapper."""
     driver = init_driver(chrome_path)
     get_data_from_page_url(driver, page_url)
+    # save_data(result_list[:NUMBER_OF_POSTS])
+    # data_to_file(result_list[:NUMBER_OF_POSTS])
     driver.quit()
 
 
@@ -137,28 +149,49 @@ def get_data_from_posts():
                     "user_cake_day": user_cake_day,
                 }
             )
+            dict = {
+                "unique_id": unique_id,
+                "post_url": post_url,
+                "user_name": user_name,
+                "post_date": post_date,
+                "number_of_comments": number_of_comments,
+                "number_of_votes": number_of_votes,
+                "post_karma": post_karma,
+                "comment_karma": comment_karma,
+                "user_karma": user_karma,
+                "user_cake_day": user_cake_day,
+            }
+            r = requests.post('http://localhost:8087/posts/', json=dict)
+            print(r.text)
         q.task_done()
     except Exception as _ex:
         q.task_done()
 
 
-def data_to_file(result_list):
-    """This function writes the final data to a file."""
-    now: str = datetime.now().strftime("%Y%m%d%H%M")
-    with open("reddit-" + now + ".txt", "a") as file:
-        for i in range(len(result_list)):
-            file.write(str(result_list[i]) + "\n")
+def save_data(result_list):
+    for post in result_list:
+        r = requests.post('http://localhost:8087/posts/', json=post)
+        print(r)
+
+
+
+# def data_to_file(result_list):
+#     """This function writes the final data to a file."""
+#     now: str = datetime.now().strftime("%Y%m%d%H%M")
+#     with open("reddit-" + now + ".txt", "a") as file:
+#         for i in range(len(result_list)):
+#             file.write(str(json.dumps(result_list[i])) + "\n")
 
 
 def get_data_from_page_url(driver, url: str):
     driver.get(url)
     actions = ActionChains(driver)
     i = 1
-    while len(result_list) < number_of_posts:
+    while len(result_list) < NUMBER_OF_POSTS:
         try:
             element = driver.find_element(By.XPATH, "(//div[@data-testid = 'post-container'])[" + str(i) + "]")
             q.put(element)
-            Thread(target=get_data_from_posts).start()
+            Thread(target=get_data_from_posts, name='thread', daemon=True).start()
             actions.move_to_element(element).perform()
             i += 1
         except Exception as _ex:
@@ -166,19 +199,6 @@ def get_data_from_page_url(driver, url: str):
 
     q.join()
 
-    sorted_list = sorted(result_list, key=lambda k: k['number_of_votes'], reverse=True)
-    data_to_file(sorted_list)
-
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
