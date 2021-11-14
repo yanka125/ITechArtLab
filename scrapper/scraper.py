@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from datetime import datetime
@@ -6,6 +5,7 @@ from functools import wraps
 from uuid import uuid1
 from threading import Thread
 from queue import Queue
+import json
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,22 +14,26 @@ from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
+from config import chrome_path
+
 
 # In this variable you need set the url from which you want to receive data
 page_url: str = "https://www.reddit.com/top/?t=month"
 
 # In this variable you need put the path to your chromedriver.exe
-chrome_path: str = "D:\chromedriver.exe"
+chrome_path: str = chrome_path
 
 # In this variable you need to set the number of posts from which data will be collected
-NUMBER_OF_POSTS: int = 1
+NUMBER_OF_POSTS: int = 100
 
+# This variable used to make a queue for collecting data
 q = Queue()
 
+# This variable collects all needed data
 result_list: list[dict] = []
 
 # This variable used to access the user's url
-headers: dict[str, str] = {
+headers = {
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
               "image/avif,image/webp,image/apng,*/*;q=0.8,application"
               "/signed-exchange;v=b3;q=0.9",
@@ -63,13 +67,23 @@ def get_logger():
     return logger
 
 
+def get_logger():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s',
+    )
+    logger = logging.getLogger(__name__)
+    return logger
+
+
+logger = get_logger()
+
+
 @measure
 def main():
     """This function configures and launches the scrapper."""
     driver = init_driver(chrome_path)
     get_data_from_page_url(driver, page_url)
-    # save_data(result_list[:NUMBER_OF_POSTS])
-    # data_to_file(result_list[:NUMBER_OF_POSTS])
     driver.quit()
 
 
@@ -91,50 +105,50 @@ def get_data_from_user_url(user_url):
     """This function collects required data from the user's page."""
     response = requests.get(url=user_url, headers=headers)
     soup = BeautifulSoup(response.text, "lxml")
-    # This variable takes block of the page in which the required data is located
-    elem: str = soup.find("script", {"id": "data"}).text
-    # This variable find index of required data in string
-    index_carma: int = elem.index('"karma":{"fromAwards')
-    # This variable find required data in string
-    all_carma: str = elem[index_carma:index_carma + 120]
-    post_karma: str = all_carma[all_carma.index('"fromPosts":') + 12:
-                                all_carma.index('"total"') - 1]
-    comment_karma: str = all_carma[all_carma.index('"fromComments":') + 15:
-                                   all_carma.index('"fromPosts"') - 1]
-    # Variables user_karma and user_cake_day find by html elements
-    user_karma: str = soup.find("span",
-        {"id": "profile--id-card--highlight-tooltip--karma"}).text
-    user_cake_day: str = soup.find("span",
-        {"id": "profile--id-card--highlight-tooltip--cakeday"}).text
+    elem = soup.find("script", {"id": "data"}).text.split('=', 1)[1].rstrip(';')
+    data = json.loads(elem)['profiles']['about']
+    comment_karma = ''
+    post_karma = ''
+    for key in data:
+        comment_karma = data[key]['karma']['fromComments']
+        post_karma = data[key]['karma']['fromPosts']
+    user_karma_text = soup.find("span", {"id": "profile--id-card--highlight-tooltip--karma"}).text
+    if user_karma_text.find(','):
+        user_karma = int((user_karma_text.replace(',', '')))
+    else:
+        user_karma = int(user_karma_text)
+    user_cake_day = soup.find("span", {"id": "profile--id-card--highlight-tooltip--cakeday"}).text
     if post_karma is None or comment_karma is None or user_karma is None or user_cake_day is None:
-        q.task_done()
         pass
     else:
         return post_karma, comment_karma, user_karma, user_cake_day
 
 
 def get_data_from_posts():
+    """This function checked and collects all required data from one post."""
     try:
         element = q.get()
         unique_id = uuid1().hex
         post_date: str = element.find_element(By.CLASS_NAME, "_3jOxDPIQ0KaOWpzvSQo-1s").text
         post_category: str = element.find_element(By.CLASS_NAME, "_2mHuuvyV9doV3zwbZPtIPG").text[2:]
-        number_of_votes: str = element.find_element(By.CLASS_NAME, "_1E9mcoVn4MYnuBQSVDt1gC").text
-        number_of_comments: str = element.find_element(By.CLASS_NAME, 'FHCV02u6Cp2zYL0fhQPsO').text
+        number_of_votes_text: str = element.find_element(By.CLASS_NAME, "_1E9mcoVn4MYnuBQSVDt1gC").text
+        if number_of_votes_text.find('k'):
+            number_of_votes = int(float(number_of_votes_text.replace('k', '')) * 1000)
+        else:
+            number_of_votes = int(float(number_of_votes_text))
+        number_of_comments_text: str = element.find_element(By.CLASS_NAME, 'FHCV02u6Cp2zYL0fhQPsO').text
+        if number_of_comments_text.find('k Comments'):
+            number_of_comments = int(float(number_of_comments_text.replace('k Comments', '')) * 1000)
+        else:
+            number_of_comments = int(number_of_comments_text.replace('Comments', ''))
         post_url: str = element.find_element(By.CLASS_NAME, '_3jOxDPIQ0KaOWpzvSQo-1s').get_attribute("href")
         user_url: str = element.find_element(By.CLASS_NAME, '_2tbHP6ZydRpjI44J3syuqC').get_attribute("href")
         user_name: str = user_url[user_url.index('/user/') + 6:len(user_url) - 1]
         if unique_id is None or post_date is None or number_of_comments is None or post_category is None \
                 or number_of_votes is None or post_url is None or user_url is None or user_name == "[deleted]":
             pass
-        elif unique_id == '' or post_date == '' or number_of_comments == '' or post_category == '' \
-                or number_of_votes == '' or post_url == '' or user_url == '' or user_name == '':
-            pass
         else:
-            (post_karma, comment_karma, user_karma,
-             user_cake_day) = get_data_from_user_url(user_url)
-            if post_karma is None or comment_karma is None or user_karma is None or user_cake_day is None:
-                pass
+            (post_karma, comment_karma, user_karma, user_cake_day) = get_data_from_user_url(user_url)
             result_list.append(
                 {
                     "unique_id": unique_id,
@@ -163,24 +177,10 @@ def get_data_from_posts():
             }
             r = requests.post('http://localhost:8087/posts/', json=dict)
             print(r.text)
+            logger.info("All data from post collected successfully")
         q.task_done()
     except Exception as _ex:
         q.task_done()
-
-
-def save_data(result_list):
-    for post in result_list:
-        r = requests.post('http://localhost:8087/posts/', json=post)
-        print(r)
-
-
-
-# def data_to_file(result_list):
-#     """This function writes the final data to a file."""
-#     now: str = datetime.now().strftime("%Y%m%d%H%M")
-#     with open("reddit-" + now + ".txt", "a") as file:
-#         for i in range(len(result_list)):
-#             file.write(str(json.dumps(result_list[i])) + "\n")
 
 
 def get_data_from_page_url(driver, url: str):
@@ -191,7 +191,7 @@ def get_data_from_page_url(driver, url: str):
         try:
             element = driver.find_element(By.XPATH, "(//div[@data-testid = 'post-container'])[" + str(i) + "]")
             q.put(element)
-            Thread(target=get_data_from_posts, name='thread', daemon=True).start()
+            Thread(target=get_data_from_posts, daemon=True).start()
             actions.move_to_element(element).perform()
             i += 1
         except Exception as _ex:
