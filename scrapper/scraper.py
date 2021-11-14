@@ -104,10 +104,7 @@ def get_data_from_user_url(user_url):
         comment_karma = data[key]['karma']['fromComments']
         post_karma = data[key]['karma']['fromPosts']
     user_karma_text = soup.find("span", {"id": "profile--id-card--highlight-tooltip--karma"}).text
-    if user_karma_text.find(','):
-        user_karma = int((user_karma_text.replace(',', '')))
-    else:
-        user_karma = int(user_karma_text)
+    user_karma = int((user_karma_text.replace(',', '')))
     user_cake_day = soup.find("span", {"id": "profile--id-card--highlight-tooltip--cakeday"}).text
     if post_karma is None or comment_karma is None or user_karma is None or user_cake_day is None:
         pass
@@ -124,12 +121,12 @@ def get_data_from_posts(counter=COUNTER):
         post_date: str = element.find_element(By.CLASS_NAME, "_3jOxDPIQ0KaOWpzvSQo-1s").text
         post_category: str = element.find_element(By.CLASS_NAME, "_2mHuuvyV9doV3zwbZPtIPG").text[2:]
         number_of_votes_text: str = element.find_element(By.CLASS_NAME, "_1E9mcoVn4MYnuBQSVDt1gC").text
-        if number_of_votes_text.find('k'):
+        if 'k' in number_of_votes_text:
             number_of_votes = int(float(number_of_votes_text.replace('k', '')) * 1000)
         else:
-            number_of_votes = int(float(number_of_votes_text))
+            number_of_votes = int(number_of_votes_text)
         number_of_comments_text: str = element.find_element(By.CLASS_NAME, 'FHCV02u6Cp2zYL0fhQPsO').text
-        if number_of_comments_text.find('k Comments'):
+        if 'k Comments' in number_of_comments_text:
             number_of_comments = int(float(number_of_comments_text.replace('k Comments', '')) * 1000)
         else:
             number_of_comments = int(number_of_comments_text.replace('Comments', ''))
@@ -158,6 +155,7 @@ def get_data_from_posts(counter=COUNTER):
             counter += 1
         q.task_done()
     except Exception as _ex:
+        logger.warning(_ex)
         q.task_done()
 
 
@@ -173,7 +171,7 @@ def get_data_from_page_url(driver, url: str):
             actions.move_to_element(element).perform()
             i += 1
         except Exception as _ex:
-            print(_ex)
+            logger.error(_ex)
 
     q.join()
 
