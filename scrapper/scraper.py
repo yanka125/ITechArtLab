@@ -1,6 +1,5 @@
 import logging
 import time
-from datetime import datetime
 from functools import wraps
 from uuid import uuid1
 from threading import Thread
@@ -24,13 +23,13 @@ page_url: str = "https://www.reddit.com/top/?t=month"
 chrome_path: str = chrome_path
 
 # In this variable you need to set the number of posts from which data will be collected
-NUMBER_OF_POSTS: int = 100
+NUMBER_OF_POSTS: int = 10
 
-# This variable used to make a queue for collecting data
+# This variable is used to make a queue for collecting data
 q = Queue()
 
-# This variable collects all needed data
-result_list: list[dict] = []
+# This variable is used to count the number of posted posts
+COUNTER: int = 1
 
 # This variable used to access the user's url
 headers = {
@@ -56,18 +55,9 @@ def measure(func):
 
     return _time_it
 
-def get_logger():
-    logger = logging.getLogger("threading_example")
-    logger.setLevel(logging.ERROR)
-    fh = logging.FileHandler("threading.log")
-    fmt = '%(asctime)s - %(threadName)s - %(levelname)s - %(message)s'
-    formatter = logging.Formatter(fmt)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-    return logger
-
 
 def get_logger():
+    """This function configures logger."""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s',
@@ -76,6 +66,7 @@ def get_logger():
     return logger
 
 
+# This variable initializes the logger
 logger = get_logger()
 
 
@@ -124,8 +115,9 @@ def get_data_from_user_url(user_url):
         return post_karma, comment_karma, user_karma, user_cake_day
 
 
-def get_data_from_posts():
-    """This function checked and collects all required data from one post."""
+def get_data_from_posts(counter=COUNTER):
+    """This function checked and collects all required data from one post,
+    and send post request to api"""
     try:
         element = q.get()
         unique_id = uuid1().hex
@@ -149,21 +141,7 @@ def get_data_from_posts():
             pass
         else:
             (post_karma, comment_karma, user_karma, user_cake_day) = get_data_from_user_url(user_url)
-            result_list.append(
-                {
-                    "unique_id": unique_id,
-                    "post_url": post_url,
-                    "user_name": user_name,
-                    "post_date": post_date,
-                    "number_of_comments": number_of_comments,
-                    "number_of_votes": number_of_votes,
-                    "post_karma": post_karma,
-                    "comment_karma": comment_karma,
-                    "user_karma": user_karma,
-                    "user_cake_day": user_cake_day,
-                }
-            )
-            dict = {
+            post = {
                 "unique_id": unique_id,
                 "post_url": post_url,
                 "user_name": user_name,
@@ -175,9 +153,9 @@ def get_data_from_posts():
                 "user_karma": user_karma,
                 "user_cake_day": user_cake_day,
             }
-            r = requests.post('http://localhost:8087/posts/', json=dict)
-            print(r.text)
+            requests.post('http://localhost:8087/posts/', json=post)
             logger.info("All data from post collected successfully")
+            counter += 1
         q.task_done()
     except Exception as _ex:
         q.task_done()
@@ -187,11 +165,11 @@ def get_data_from_page_url(driver, url: str):
     driver.get(url)
     actions = ActionChains(driver)
     i = 1
-    while len(result_list) < NUMBER_OF_POSTS:
+    while COUNTER < NUMBER_OF_POSTS:
         try:
             element = driver.find_element(By.XPATH, "(//div[@data-testid = 'post-container'])[" + str(i) + "]")
             q.put(element)
-            Thread(target=get_data_from_posts, daemon=True).start()
+            Thread(target=get_data_from_posts, daemon=True, args=(COUNTER,)).start()
             actions.move_to_element(element).perform()
             i += 1
         except Exception as _ex:

@@ -31,12 +31,14 @@ def overwrite_file(posts: list):
     with open("reddit-" + now + ".txt", "w") as file:
         file.write(result)
 
+
 def convet_posts_in_str(posts: list):
     result_list = []
     for post in posts:
         result_list.append(json.dumps(post))
     result = '\n'.join(result_list)
     return result
+
 
 class ServiceHandler(BaseHTTPRequestHandler):
 
