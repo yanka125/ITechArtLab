@@ -4,7 +4,6 @@ This project is made for automatic web scraping. It gets a url and a list of sam
 This data can be text, url or any html tag value of that page. Now this scrapper can find data only on website "https://www.reddit.com/".
 
 
-
 ## Installation
 
 It's compatible with python 3.9
@@ -49,11 +48,11 @@ Then you need run file ***scraper.py***
 
 Here's the output:
 ```python
-{'unique_id': '15fce0bb38ae11ec9cccbc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/antiwork/comments/q82vqk/quit_my_job_last_night_it_was_nice_to_be_home_to/', 'user_name': 'hestolemysmile', 'user_karma': '130,613', 'user_cake_day': 'November 5, 2019', 'post_karma': '28225', 'comment_karma': '9319', 'post_date': '15 days ago', 'number_of_comments': '12.6k Comments', 'number_of_votes': '254k', 'post_category': 'antiwork'}
-{'unique_id': '1b887edd38ae11ec8b27bc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/memes/comments/q1b13o/reddit_might_be_shit_but_its_our_shit/', 'user_name': '_Floydian', 'user_karma': '202,360', 'user_cake_day': 'April 11, 2018', 'post_karma': '133588', 'comment_karma': '47290', 'post_date': '25 days ago', 'number_of_comments': '1.5k Comments', 'number_of_votes': '196k', 'post_category': 'memes'}
-{'unique_id': '1d9cac8838ae11ecb52ebc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/WhitePeopleTwitter/comments/py8nsn/id_like_to_see_it/', 'user_name': 'MessyGuy01', 'user_karma': '253,799', 'user_cake_day': 'March 22, 2019', 'post_karma': '220589', 'comment_karma': '16226', 'post_date': '1 month ago', 'number_of_comments': '5.4k Comments', 'number_of_votes': '170k', 'post_category': 'WhitePeopleTwitter'}
-{'unique_id': '1f146be838ae11ec88dbbc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/MadeMeSmile/comments/qgjrsc/reddit_this_is_my_child_i_apologize_for_nothing/', 'user_name': 'Atillion', 'user_karma': '148,548', 'user_cake_day': 'October 31, 2015', 'post_karma': '50463', 'comment_karma': '70505', 'post_date': '2 days ago', 'number_of_comments': '1.8k Comments', 'number_of_votes': '167k', 'post_category': 'MadeMeSmile'}
-{'unique_id': '2104cc6238ae11ec9f97bc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/antiwork/comments/q9dwp6/whos_the_boss_now/', 'user_name': 'tylerro2', 'user_karma': '18,937', 'user_cake_day': 'June 15, 2020', 'post_karma': '9380', 'comment_karma': '731', 'post_date': '13 days ago', 'number_of_comments': '3.6k Comments', 'number_of_votes': '155k', 'post_category': 'antiwork'}
+{"unique_id": "4a9a7f4a457211ec8206bc5ff4f0ce51", "post_url": "https://www.reddit.com/r/MadeMeSmile/comments/qgjrsc/reddit_this_is_my_child_i_apologize_for_nothing/", "user_name": "Atillion", "post_date": "19 days ago", "number_of_comments": 1900, "number_of_votes": 170000, "post_karma": 57632, "comment_karma": 85341, "user_karma": 188695, "user_cake_day": "October 31, 2015"}
+{"unique_id": "4b16db3b457211ecb93ebc5ff4f0ce51", "post_url": "https://www.reddit.com/r/antiwork/comments/q9dwp6/whos_the_boss_now/", "user_name": "tylerro2", "post_date": "1 month ago", "number_of_comments": 3600, "number_of_votes": 161000, "post_karma": 9381, "comment_karma": 731, "user_karma": 19103, "user_cake_day": "June 15, 2020"}
+{"unique_id": "4b569a81457211ec8ae3bc5ff4f0ce51", "post_url": "https://www.reddit.com/r/pics/comments/qlkjo5/im_a_rescuer_for_a_raptor_rehab_and_i_got_the/", "user_name": "Wildlife-outside", "post_date": "12 days ago", "number_of_comments": 4000, "number_of_votes": 156000, "post_karma": 12557, "comment_karma": 33449, "user_karma": 57113, "user_cake_day": "January 17, 2021"}
+{"unique_id": "4ad146b6457211ecbad8bc5ff4f0ce51", "post_url": "https://www.reddit.com/r/funny/comments/qjqv3x/this_halloween_im_an_antifaxxer_and_theres_no/", "user_name": "thatszamora", "post_date": "14 days ago", "number_of_comments": 263, "number_of_votes": 165000, "post_karma": 19855, "comment_karma": 49, "user_karma": 26913, "user_cake_day": "April 4, 2019"}
+{"unique_id": "4c4b0b38457211ecb493bc5ff4f0ce51", "post_url": "https://www.reddit.com/r/nextfuckinglevel/comments/qf7u2z/man_just_did_a_vocal_warmup_with_70k_people_in/", "user_name": "_Xyreo_", "post_date": "21 days ago", "number_of_comments": 2800, "number_of_votes": 145000, "post_karma": 829646, "comment_karma": 20817, "user_karma": 1067084, "user_cake_day": "February 28, 2021"}
 ```
 All this data saves in txt file (by this fucntion). If you want to save data in another format, just reformat this function.
 ```python
