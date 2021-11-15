@@ -23,7 +23,7 @@ page_url: str = "https://www.reddit.com/top/?t=month"
 chrome_path: str = chrome_path
 
 # In this variable you need to set the number of posts from which data will be collected
-NUMBER_OF_POSTS: int = 10
+NUMBER_OF_POSTS: int = 100
 
 # This variable is used to make a queue for collecting data
 q = Queue()
@@ -112,7 +112,7 @@ def get_data_from_user_url(user_url):
         return post_karma, comment_karma, user_karma, user_cake_day
 
 
-def get_data_from_posts(counter=COUNTER):
+def get_data_from_posts():
     """This function checked and collects all required data from one post,
     and send post request to api"""
     try:
@@ -152,7 +152,8 @@ def get_data_from_posts(counter=COUNTER):
             }
             requests.post('http://localhost:8087/posts/', json=post)
             logger.info("All data from post collected successfully")
-            counter += 1
+            global COUNTER
+            COUNTER += 1
         q.task_done()
     except Exception as _ex:
         logger.warning(_ex)
@@ -167,7 +168,7 @@ def get_data_from_page_url(driver, url: str):
         try:
             element = driver.find_element(By.XPATH, "(//div[@data-testid = 'post-container'])[" + str(i) + "]")
             q.put(element)
-            Thread(target=get_data_from_posts, daemon=True, args=(COUNTER,)).start()
+            Thread(target=get_data_from_posts).start()
             actions.move_to_element(element).perform()
             i += 1
         except Exception as _ex:

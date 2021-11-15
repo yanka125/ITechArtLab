@@ -2,6 +2,7 @@ import json
 import re
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import os
 
 
 def get_posts():
@@ -27,12 +28,12 @@ def check_url(path, pattern: str, extract_id: bool):
 
 def overwrite_file(posts: list):
     now: str = datetime.now().strftime("%Y%m%d")
-    result = convet_posts_in_str(posts)
+    result = convert_posts_in_str(posts)
     with open("reddit-" + now + ".txt", "w") as file:
         file.write(result)
 
 
-def convet_posts_in_str(posts: list):
+def convert_posts_in_str(posts: list):
     result_list = []
     for post in posts:
         result_list.append(json.dumps(post))
@@ -52,7 +53,7 @@ class ServiceHandler(BaseHTTPRequestHandler):
         if is_valid_url:
             posts = get_posts()
             if unique_id is None:
-                posts_str = convet_posts_in_str(posts)
+                posts_str = convert_posts_in_str(posts)
                 self._set_headers(200)
                 self.wfile.write(posts_str.encode('utf-8'))
             else:
@@ -70,15 +71,32 @@ class ServiceHandler(BaseHTTPRequestHandler):
         if is_valid_url:
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
-            now: str = datetime.now().strftime("%Y%m%d")
             post_json = json.loads(post_data)
-            with open("reddit-" + now + ".txt", "a") as file:
-                file.write(json.dumps(post_json) + '\n')
-            with open("reddit-" + now + ".txt", "r") as file:
-                count = sum(1 for _ in file)
+            now: str = datetime.now().strftime("%Y%m%d")
+            file_name = f'reddit-{now}.txt'
+            if os.path.exists(file_name):
+                if os.path.getsize(file_name) > 0:
+                    posts = get_posts()
+                    if post_json['unique_id'] in (post["unique_id"] for post in posts):
+                        self._set_headers(405)
+                    else:
+                        with open("reddit-" + now + ".txt", "a") as file:
+                            file.write('\n' + json.dumps(post_json))
+                        with open("reddit-" + now + ".txt", "r") as file:
+                            count = sum(1 for _ in file)
+                else:
+                    with open("reddit-" + now + ".txt", "a") as file:
+                        file.write(json.dumps(post_json))
+                    with open("reddit-" + now + ".txt", "r") as file:
+                        count = sum(1 for _ in file)
+            else:
+                with open("reddit-" + now + ".txt", "w") as file:
+                    file.write(json.dumps(post_json))
+                with open("reddit-" + now + ".txt", "r") as file:
+                    count = sum(1 for _ in file)
             self._set_headers(201)
-            a = post_json["unique_id"]
-            response = {a: count}
+            post_id = post_json["unique_id"]
+            response = {post_id: count}
             self.wfile.write(str(json.dumps(response)).encode('utf-8'))
         else:
             self._set_headers(400)
@@ -89,17 +107,17 @@ class ServiceHandler(BaseHTTPRequestHandler):
             posts = get_posts()
             elem = next((post for post in posts if post["unique_id"] == unique_id), None)
             if elem is not None:
-                content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
-                post_data = self.rfile.read(content_length).decode('utf-8')  # <--- Gets the data itself
-                a = json.loads(post_data)
-                if all(key in elem for key in a):
-                    elem.update(a)
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length).decode('utf-8')
+                post_json = json.loads(post_data)
+                if all(key in elem for key in post_json):
+                    elem.update(post_json)
+                    overwrite_file(posts)
+                    self._set_headers(200)
                 else:
-                    self._set_headers(404)
-                overwrite_file(posts)
-                self._set_headers(200)
+                    self._set_headers(405)
             else:
-                self._set_headers(400)
+                self._set_headers(404)
         else:
             self._set_headers(400)
 
@@ -107,7 +125,7 @@ class ServiceHandler(BaseHTTPRequestHandler):
         (is_valid_url, unique_id) = check_url(self.path,"^/posts/([a-z0-9]+)/?$", True)
         if is_valid_url:
             posts = get_posts()
-            elem = next((post for post in posts if post["unique_id"] == unique_id),None)
+            elem = next((post for post in posts if post["unique_id"] == unique_id), None)
             if elem is not None:
                 posts.remove(elem)
                 overwrite_file(posts)
