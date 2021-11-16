@@ -51,10 +51,45 @@ The ***api.py*** is simple HTTP server which can host the following api's:
 - DELETE : Uses DELETE Method to delete an Existing post from the reddit-YYYYMMDD.txt file.
 
 
-- Usage of LIST: GET >> http://localhost:8087/posts/ or http://localhost:8087/posts/unique_id
-- Usage of CREATE: POST >> http://localhost:8087/posts/
-- Usage of UPDATE: PUT >> http://localhost:8087/posts/unique_id
-- Usage of DELETE: DELETE >> http://localhost:8087/posts/unique_id
+1. Usage of LIST: GET >> http://localhost:8087/posts/ or http://localhost:8087/posts/{unique_id}'
++ Request all posts: http://localhost:8087/posts/
++ Request post by unique_id: http://localhost:8087/posts/c268a329486411ecb101bc5ff4f0ce51
+2. Usage of CREATE: POST >> http://localhost:8087/posts/
++ Example of request http://localhost:8087/posts/ with the following body
+```bash
+{
+    "unique_id": "c1d34103486411ec8c14bc5ff4f0ce51",
+    "post_url": "https://www.reddit.com/r/MadeMeSmile/comments/qkq3a2/my_kid_was_a_little_sad_after_not_seeing_any/",
+    "user_name": "Atillion",
+    "post_date": "17 days ago",
+    "number_of_comments": 1300,
+    "number_of_votes": 177000,
+    "post_karma": 57665,
+    "comment_karma": 88685,
+    "user_karma": 192229,
+    "user_cake_day": "October 31, 2015"
+}
+```
+3. Usage of UPDATE: PUT >> http://localhost:8087/posts/{unique_id}
++ Example of request: http://localhost:8087/posts/c268a329486411ecb101bc5ff4f0ce51 
+with the following body.
+```bash
+{
+    "post_url": "https://www.reddit.com/r/funny/comments/qjqv3x/this_halloween_im_an_antifaxxer_and_theres_no/",
+    "user_name": "thatszamora",
+    "post_date": "18 days ago",
+    "number_of_comments": 262,
+    "number_of_votes": 166000,
+    "post_karma": 19855,
+    "comment_karma": 49,
+    "user_karma": 26981,
+    "user_cake_day": "April 4, 2019"
+}
+```
++ You shouldn't add the "unique_id" field, otherwise, you will receive a 405 error.
++ You shouldn't add non-existent fields, otherwise, you will receive a 405 error.
+4. Usage of DELETE: DELETE >> http://localhost:8087/posts/{unique_id}
++ Example of request: http://localhost:8087/posts/c268a329486411ecb101bc5ff4f0ce51
 
 Just run ***api.py*** to run HTTTP server.
 ***
@@ -80,7 +115,7 @@ NUMBER_OF_POSTS: int = 100
 Then you need run file ***scraper.py*** (Don't forget to check if api.py is running.)
 
 ***scraper.py*** make POST request into our simple HTTP server.
-Data storages in reddit-YYYYMMDD.txt in the following format:
+Data is stored in file reddit-YYYYMMDD.txt in the following format:
 ```txt
 {'unique_id': '15fce0bb38ae11ec9cccbc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/antiwork/comments/q82vqk/quit_my_job_last_night_it_was_nice_to_be_home_to/', 'user_name': 'hestolemysmile', 'user_karma': 130613, 'user_cake_day': 'November 5, 2019', 'post_karma': 28225, 'comment_karma': 9319, 'post_date': '15 days ago', 'number_of_comments': 12600, 'number_of_votes': 254000, 'post_category': 'antiwork'}
 {'unique_id': '1b887edd38ae11ec8b27bc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/memes/comments/q1b13o/reddit_might_be_shit_but_its_our_shit/', 'user_name': '_Floydian', 'user_karma': 202360, 'user_cake_day': 'April 11, 2018', 'post_karma': 133588, 'comment_karma': 47290, 'post_date': '25 days ago', 'number_of_comments': 1500, 'number_of_votes': 196000, 'post_category': 'memes'}
