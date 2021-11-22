@@ -4,6 +4,8 @@ from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 
+from PostgreSQL import main
+
 
 def get_posts():
     """
@@ -121,43 +123,9 @@ class ServiceHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
             post_json = json.loads(post_data)
-            now: str = datetime.now().strftime("%Y%m%d")
-            file_name: str = f'reddit-{now}.txt'
-
-            # Checking if we have a file to write
-            if os.path.exists(file_name):
-                # If file is not empty
-                if os.path.getsize(file_name) > 0:
-                    posts = get_posts()
-
-                    # Check if unique_id from the request exists in file
-                    if post_json['unique_id'] in (post["unique_id"] for post in posts):
-                        self._set_headers(405)
-                    else:
-                        with open("reddit-" + now + ".txt", "a") as file:
-                            file.write('\n' + json.dumps(post_json))
-                        # Read the line number of added post
-                        with open("reddit-" + now + ".txt", "r") as file:
-                            count = len(file.readlines())
-
-                # If file is empty
-                else:
-                    with open("reddit-" + now + ".txt", "a") as file:
-                        file.write(json.dumps(post_json))
-                    with open("reddit-" + now + ".txt", "r") as file:
-                        count = len(file.readlines())
-            # If file not exist create new file
-            else:
-                with open("reddit-" + now + ".txt", "w") as file:
-                    file.write(json.dumps(post_json))
-                with open("reddit-" + now + ".txt", "r") as file:
-                    count = len(file.readlines())
-
+            data_to_base = tuple(post_json.values())
+            main(data_to_base)
             self._set_headers(201)
-            # Return unique_id and line number of added post in response body
-            post_id = post_json["unique_id"]
-            response = {post_id: count}
-            self.wfile.write(str(json.dumps(response)).encode('utf-8'))
 
         # If invalid url path
         else:
