@@ -4,23 +4,34 @@ from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 
-from PostgreSQL import main
+from PostgreSQL import post_method, get_method, delete_method
 
 
 def get_posts():
     """
-    Read all post data from file and return list of dictionaries.
+    Read all post data from database and return list of dictionaries.
 
     :return: all post data
     :rtype: list[dict]
     """
-    now: str = datetime.now().strftime("%Y%m%d")
-    data: list = []
-    with open("reddit-" + now + ".txt") as data_file:
-        lines = data_file.readlines()
-        for line in lines:
-            data.append(json.loads(line))
-    return data
+    data = get_method()
+    result_list = []
+    for t in data:
+        result_list.append(
+            {
+                "unique_id": t[0],
+                "post_url": t[1],
+                "user_name": t[2],
+                "post_date": t[3],
+                "number_of_comments": t[4],
+                "number_of_votes": t[5],
+                "post_karma": t[6],
+                "comment_karma": t[7],
+                "user_karma": t[8],
+                "user_cake_day": t[9]
+            }
+        )
+    return result_list
 
 
 def check_url(path: str, pattern: str, extract_id: bool):
@@ -44,18 +55,6 @@ def check_url(path: str, pattern: str, extract_id: bool):
         if extract_id:
             unique_id = url.group(1)
     return is_valid_url, unique_id
-
-
-def overwrite_file(posts: list):
-    """Function to overwrite txt file with data when we use 'PUT' or 'DELETE' method.
-
-    :param posts: post data for overwrite
-    :type posts: list[dict]
-    """
-    now: str = datetime.now().strftime("%Y%m%d")
-    result = convert_posts_in_str(posts)
-    with open("reddit-" + now + ".txt", "w") as file:
-        file.write(result)
 
 
 def convert_posts_in_str(posts: list):
@@ -114,18 +113,24 @@ class ServiceHandler(BaseHTTPRequestHandler):
             self._set_headers(400)
 
     def do_POST(self):
-        """Function to receive post request and writes new post into file.
+        """Function to receive post request and writes new post into database.
         Valid request url path: /posts/."""
         (is_valid_url, unique_id) = check_url(self.path,"^/posts/$", False)
 
         if is_valid_url:
+            posts = get_posts()
+
             # Reading the request body
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
             post_json = json.loads(post_data)
-            data_to_base = tuple(post_json.values())
-            main(data_to_base)
-            self._set_headers(201)
+            if post_json['unique_id'] in (post["unique_id"] for post in posts):
+                self._set_headers(405)
+            else:
+                data_to_users = (post_json["user_name"], post_json["post_karma"], post_json["comment_karma"], post_json["user_karma"], post_json["user_cake_day"],)
+                data_to_posts = (post_json["unique_id"], post_json["post_url"], post_json["user_name"], post_json["post_date"], post_json["number_of_comments"], post_json["number_of_comments"],)
+                post_method(data_to_posts, data_to_users)
+                self._set_headers(201)
 
         # If invalid url path
         else:
@@ -153,7 +158,6 @@ class ServiceHandler(BaseHTTPRequestHandler):
                     # Check if valid keys are passed and overwrite file with updated data
                     if all(key in elem for key in post_json):
                         elem.update(post_json)
-                        overwrite_file(posts)
                         self._set_headers(200)
                     else:
                         self._set_headers(405)
@@ -175,8 +179,7 @@ class ServiceHandler(BaseHTTPRequestHandler):
 
             # If requested post exists in file
             if elem is not None:
-                posts.remove(elem)
-                overwrite_file(posts)
+                delete_method(unique_id)
                 self._set_headers(200)
             else:
                 self._set_headers(404)
