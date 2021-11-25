@@ -5,7 +5,7 @@ service which in turn provides a simple API for basic file manipulation.
 It gets a url and a list of sample data which we want to scrape from some page.
 This data can be text, url or any html tag value of that page. 
 Now this scrapper can find data only on website https://www.reddit.com/.
-The service saves the result to a text file named reddit-YYYYMMDD.txt.
+The service saves the result to PostgreSQL database or MongoDB database.
 ***
 
 ## Installation
@@ -76,7 +76,6 @@ with the following body.
 ```bash
 {
     "post_url": "https://www.reddit.com/r/funny/comments/qjqv3x/this_halloween_im_an_antifaxxer_and_theres_no/",
-    "user_name": "thatszamora",
     "post_date": "18 days ago",
     "number_of_comments": 262,
     "number_of_votes": 166000,
@@ -86,7 +85,7 @@ with the following body.
     "user_cake_day": "April 4, 2019"
 }
 ```
-+ You shouldn't add the "unique_id" field, otherwise, you will receive a 405 error.
++ You shouldn't add the "unique_id" and "user_name" fields, otherwise, you will receive a 405 error.
 + You shouldn't add non-existent fields, otherwise, you will receive a 405 error.
 4. Usage of DELETE: DELETE >> http://localhost:8087/posts/{unique_id}
 + Example of request: http://localhost:8087/posts/c268a329486411ecb101bc5ff4f0ce51
@@ -115,11 +114,39 @@ NUMBER_OF_POSTS: int = 100
 Then you need run file ***scraper.py*** (Don't forget to check if api.py is running.)
 
 ***scraper.py*** make POST request into our simple HTTP server.
-Data is stored in file reddit-YYYYMMDD.txt in the following format:
-```txt
-{'unique_id': '15fce0bb38ae11ec9cccbc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/antiwork/comments/q82vqk/quit_my_job_last_night_it_was_nice_to_be_home_to/', 'user_name': 'hestolemysmile', 'user_karma': 130613, 'user_cake_day': 'November 5, 2019', 'post_karma': 28225, 'comment_karma': 9319, 'post_date': '15 days ago', 'number_of_comments': 12600, 'number_of_votes': 254000, 'post_category': 'antiwork'}
-{'unique_id': '1b887edd38ae11ec8b27bc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/memes/comments/q1b13o/reddit_might_be_shit_but_its_our_shit/', 'user_name': '_Floydian', 'user_karma': 202360, 'user_cake_day': 'April 11, 2018', 'post_karma': 133588, 'comment_karma': 47290, 'post_date': '25 days ago', 'number_of_comments': 1500, 'number_of_votes': 196000, 'post_category': 'memes'}
-{'unique_id': '1d9cac8838ae11ecb52ebc5ff4f0ce51', 'post_url': 'https://www.reddit.com/r/WhitePeopleTwitter/comments/py8nsn/id_like_to_see_it/', 'user_name': 'MessyGuy01', 'user_karma': 253799, 'user_cake_day': 'March 22, 2019', 'post_karma': 220589, 'comment_karma': 16226, 'post_date': '1 month ago', 'number_of_comments': 5400, 'number_of_votes': 170000, 'post_category': 'WhitePeopleTwitter'}
+Data is stored in PostgreSQL database:
+
+In __init__ method of __Database__ class, you need to add next data:
++ Name of your database **(db_name)**
++ Name of your user **(db_user)**
++ Password of your database **(db_password)**
++ Your host **(db_host)**
++ Your port **(db_port)**
+
+Example of data:
++ db_name = "Scrapper"
++ db_user = "Postgres"
++ db_password = "qwerty"
++ db_host = "127.0.0.1"
++ db_port = "5432"
+```python
+class Database(object):
+
+    connection = None
+    cursor = None
+
+    def __init__(self):
+        if self.connection is None:
+            try:
+                self.connection = connect(
+                     database=db_name,
+                     user=db_user,
+                     password=db_password,
+                     host=db_host,
+                     port=db_port,
+                )
+                self.connection.autocommit = True
+                print("Connection to PostgreSQL DB successful")
 ```
 ***
 ## Issues

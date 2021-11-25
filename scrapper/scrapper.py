@@ -23,7 +23,7 @@ page_url: str = "https://www.reddit.com/top/?t=month"
 chrome_path: str = chrome_path
 
 # Set the number of posts from which data will be collected
-NUMBER_OF_POSTS: int = 100
+NUMBER_OF_POSTS: int = 1000
 
 # Make a queue for collecting data
 q = Queue()
@@ -101,7 +101,7 @@ def init_driver(executable_path: str):
     '''This option tells Selenium that we would like it to wait for
     a certain amount of time before throwing an exception that if
     it cannot find the element on the page.'''
-    driver.implicitly_wait(20)  # seconds
+    driver.implicitly_wait(60)  # seconds
     return driver
 
 
@@ -228,6 +228,7 @@ def get_data(driver, url: str):
             i += 1
         except Exception as _ex:
             logger.error(_ex)
+            break
 
     # Waits until all elements in the queue are processed
     q.join()
