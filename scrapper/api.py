@@ -2,9 +2,15 @@ import json
 import re
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from PostgreSQL import Database
 from config import api_host, api_port
 
+database_name = "PostgreSQL"   # or MongoDB
+
+if database_name == "PostgreSQL":
+    from PostgreSQL import Database
+
+elif database_name == "MongoDB":
+    from MongoDB import Database
 
 # Create an instance of the class for the database actions
 dbs = Database()
@@ -46,7 +52,7 @@ def check_url(path: str, pattern: str, extract_id: bool):
     :param path: resource path from url
     :type path: str
     :param pattern: regex pattern
-    :type pattren: str
+    :type pattern: str
     :param extract_id: flag to check if unique_id should be extracted
     :type extract_id: bool
     :return: (flag to identify if url is valid, extracted unique id)
@@ -127,6 +133,7 @@ class ServiceHandler(BaseHTTPRequestHandler):
             post_data = self.rfile.read(content_length).decode('utf-8')
             post_json = json.loads(post_data)
             posts = get_posts(post_json['unique_id'])
+
             # If post with this unique_id already exists
             if posts:
                 self._set_headers(405)
@@ -146,7 +153,7 @@ class ServiceHandler(BaseHTTPRequestHandler):
                     post_json["number_of_comments"],
                     post_json["number_of_votes"],
                 )
-                dbs.send_to_database(data_to_posts, data_to_users)
+                dbs.write_to_database(data_to_posts, data_to_users)
                 self._set_headers(201)
 
         # If invalid url path
@@ -174,18 +181,8 @@ class ServiceHandler(BaseHTTPRequestHandler):
                     # Check if valid keys are passed and update database column
                     if all(key in elem for key in post_json):
                         elem.update(post_json)
-                        data_to_users = (
-                            elem["post_karma"],
-                            elem["comment_karma"],
-                            elem["user_karma"],
-                            elem["user_cake_day"],
-                        )
-                        data_to_posts = (
-                            elem["post_url"],
-                            elem["post_date"],
-                            elem["number_of_comments"],
-                            elem["number_of_votes"],
-                        )
+                        data_to_users = dict((k, elem[k]) for k in ("post_karma", "comment_karma", "user_karma", "user_cake_day" ))
+                        data_to_posts = dict((k, elem[k]) for k in ("post_url", "post_date", "number_of_comments", "number_of_votes"))
                         user_name = elem["user_name"]
                         dbs.update_database(data_to_users, user_name, data_to_posts, unique_id)
                         self._set_headers(200)

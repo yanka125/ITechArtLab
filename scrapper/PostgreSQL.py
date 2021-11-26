@@ -92,7 +92,7 @@ class Database(object):
         :param unique_id: unique post ID
         :type unique_id: str
         :return: all data from database
-        :rtype: list
+        :rtype: list[tuple]
         """
         get_query = """SELECT posts.*, post_karma, comment_karma, user_karma, user_cake_day
                 FROM posts
@@ -102,12 +102,12 @@ class Database(object):
             get_query = get_query + f" WHERE unique_id = '{unique_id}';"
         return self.execute_read_query(get_query)
 
-    def send_to_database(self, data_to_posts, data_to_users):
-        """Function to send data to the database.
+    def write_to_database(self, data_to_posts, data_to_users):
+        """Function to write data to the database.
 
-        :param data_to_posts: data to send to posts table
+        :param data_to_posts: data to write to posts table
         :type data_to_posts: tuple
-        :param data_to_users: data to send to users table
+        :param data_to_users: data to write to users table
         :type data_to_users: tuple
         """
         insert_query_users = (
@@ -116,29 +116,33 @@ class Database(object):
         insert_query_posts = (
             f"INSERT INTO posts (unique_id, post_url, user_name, post_date, number_of_comments, number_of_votes) VALUES {data_to_posts}"
         )
-
         select_user_name = f"SELECT user_name FROM users WHERE user_name = '{data_to_users[0]}'"
         user: list = self.execute_read_query(select_user_name)
-        # If the user is not in the database table
+
+        # If user is not found in database, add user
         if not user:
             self.execute_query(insert_query_users)
         self.execute_query(insert_query_posts)
 
     def update_database(self, data_to_users, user_name, data_to_posts, unique_id):
-        """Function to update data from database.
+        """Function to update data in database.
 
-        :param data_to_users: data to users table
+        :param data_to_users: updated data to users table
         :type data_to_users: tuple
         :param user_name: user name
         :type user_name: str
-        :param data_to_posts: data to posts table
+        :param data_to_posts: updated data to posts table
         :type data_to_posts: tuple
         :param unique_id: unique post ID
         :type unique_id: str
         """
+        post_fields = str(tuple(data_to_posts.keys())).replace('\'', '')
+        user_fields = str(tuple(data_to_users.keys())).replace('\'', '')
+        post_values = tuple(data_to_posts.values())
+        user_values = tuple(data_to_users.values())
 
-        update_query_user = f"UPDATE users SET (post_karma, comment_karma, user_karma, user_cake_day) = {data_to_users} WHERE user_name = '{user_name}';"
-        update_query_post = f"UPDATE posts SET (post_url,post_date, number_of_comments, number_of_votes) = {data_to_posts} WHERE unique_id = '{unique_id}';"
+        update_query_user = f"UPDATE users SET {user_fields} = {user_values} WHERE user_name = '{user_name}';"
+        update_query_post = f"UPDATE posts SET {post_fields} = {post_values} WHERE unique_id = '{unique_id}';"
 
         self.execute_query(update_query_user)
         self.execute_query(update_query_post)

@@ -114,9 +114,20 @@ NUMBER_OF_POSTS: int = 100
 Then you need run file ***scraper.py*** (Don't forget to check if api.py is running.)
 
 ***scraper.py*** make POST request into our simple HTTP server.
-Data is stored in PostgreSQL database:
+Data is stored in PostgreSQL database or in MongoDB database
+(to select a database, change the value in the **database_name** in api.py file):
+```python
+import json
+import re
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-In __init__ method of __Database__ class, you need to add next data:
+from config import api_host, api_port
+
+database_name = "MongoDB"   # or PostgreSQL
+```
+
+### PostgreSQL
+In __init__ method of __Database__ class in __PostgreSQL.py__ file, you need to add next data:
 + Name of your database **(db_name)**
 + Name of your user **(db_user)**
 + Password of your database **(db_password)**
@@ -148,6 +159,35 @@ class Database(object):
                 self.connection.autocommit = True
                 print("Connection to PostgreSQL DB successful")
 ```
+
+### MongoDB
+In __init__ method of __Database__ class in __MongoDB.py__ file, you need to add next data:
++ URI of your database **(mongo_uri)**
++ Name of your database **(mongo_db_name)**
+
+Example of data:
++ mongo_uri = "Scrapper"
++ mongo_db_name = "mongodb://localhost:27017/"
+
+```python
+class Database(object):
+
+    def __init__(self):
+        try:
+            client = pymongo.MongoClient(mongo_uri)
+            self.mydb = client[mongo_db_name]
+            print("Connection to MongoDB successful")
+            # Create posts and users collections
+            self.mydb["posts"].drop()
+            self.posts_collection = self.mydb["posts"]
+            self.mydb["users"].drop()
+            self.users_collection = self.mydb["users"]
+            print("users collection created")
+            print("posts collection created")
+        except Exception as e:
+            print(f"The error '{e}' occurred")
+```
+
 ***
 ## Issues
 Feel free to open an issue if you have any problem using the module.

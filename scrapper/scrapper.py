@@ -9,6 +9,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -101,7 +102,7 @@ def init_driver(executable_path: str):
     '''This option tells Selenium that we would like it to wait for
     a certain amount of time before throwing an exception that if
     it cannot find the element on the page.'''
-    driver.implicitly_wait(60)  # seconds
+    driver.implicitly_wait(10)  # seconds
     return driver
 
 
@@ -226,9 +227,14 @@ def get_data(driver, url: str):
             # Move to next element
             actions.move_to_element(element).perform()
             i += 1
-        except Exception as _ex:
+
+        except NoSuchElementException as _ex:
+            logger.error("All posts are parsed")
             logger.error(_ex)
             break
+
+        except Exception as _ex:
+            logger.error(_ex)
 
     # Waits until all elements in the queue are processed
     q.join()
