@@ -1,11 +1,11 @@
 # HTTP-RESTful-API using Web Scraper with Selenium and Beautiful Soup in Python
 
 This project is made for automatic web scraping. He is using HTTP-RESTful-API 
-service which in turn provides a simple API for basic file manipulation.
-It gets a url and a list of sample data which we want to scrape from some page.
+service which in turn provides a simple API for basic databases manipulations.
+It gets url and list of sample data which we want to scrape from some page.
 This data can be text, url or any html tag value of that page. 
 Now this scrapper can find data only on website https://www.reddit.com/.
-The service saves the result to PostgreSQL database or MongoDB database.
+The service saves the result to PostgreSQL and MongoDB database.
 ***
 
 ## Installation
@@ -45,10 +45,10 @@ If you decide to use Postman, I recommend turning all the flags to ***OFF*** in 
 
 The ***api.py*** is simple HTTP server which can host the following api's:
 
-- LIST : Uses GET Method to show all posts from the reddit-YYYYMMDD.txt file.
-- CREATE : Uses POST Method to Create a new post for the reddit-YYYYMMDD.txt file.
-- UPDATE : Uses PUT Method to update an Existing post of the reddit-YYYYMMDD.txt file.
-- DELETE : Uses DELETE Method to delete an Existing post from the reddit-YYYYMMDD.txt file.
+- LIST : Uses GET Method to show all posts from databases.
+- CREATE : Uses POST Method to Create a new post in databases.
+- UPDATE : Uses PUT Method to update an Existing post in databases.
+- DELETE : Uses DELETE Method to delete an Existing post from databases.
 
 
 1. Usage of LIST: GET >> http://localhost:8087/posts/ or http://localhost:8087/posts/{unique_id}'
@@ -85,7 +85,7 @@ with the following body.
     "user_cake_day": "April 4, 2019"
 }
 ```
-+ You shouldn't add the "unique_id" and "user_name" fields, otherwise, you will receive a 405 error.
++ You shouldn't add the "unique_id" field, otherwise, you will receive a 405 error.
 + You shouldn't add non-existent fields, otherwise, you will receive a 405 error.
 4. Usage of DELETE: DELETE >> http://localhost:8087/posts/{unique_id}
 + Example of request: http://localhost:8087/posts/c268a329486411ecb101bc5ff4f0ce51
@@ -114,20 +114,10 @@ NUMBER_OF_POSTS: int = 100
 Then you need run file ***scraper.py*** (Don't forget to check if api.py is running.)
 
 ***scraper.py*** make POST request into our simple HTTP server.
-Data is stored in PostgreSQL database or in MongoDB database
-(to select a database, change the value in the **database_name** in api.py file):
-```python
-import json
-import re
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-from config import api_host, api_port
-
-database_name = "MongoDB"   # or PostgreSQL
-```
+Data is stored in PostgreSQL and MongoDB databases.
 
 ### PostgreSQL
-In __init__ method of __Database__ class in __PostgreSQL.py__ file, you need to add next data:
+In __api.py__ file, you need to add next data:
 + Name of your database **(db_name)**
 + Name of your user **(db_user)**
 + Password of your database **(db_password)**
@@ -141,27 +131,13 @@ Example of data:
 + db_host = "127.0.0.1"
 + db_port = "5432"
 ```python
-class Database(object):
+from config import db_name, db_user, db_password, db_host, db_port
 
-    connection = None
-    cursor = None
-
-    def __init__(self):
-        if self.connection is None:
-            try:
-                self.connection = connect(
-                     database=db_name,
-                     user=db_user,
-                     password=db_password,
-                     host=db_host,
-                     port=db_port,
-                )
-                self.connection.autocommit = True
-                print("Connection to PostgreSQL DB successful")
+# Create an instances of the classes for the databases actions
+postgresql = PostgreSQL(db_name, db_user, db_password, db_host, db_port)
 ```
-
 ### MongoDB
-In __init__ method of __Database__ class in __MongoDB.py__ file, you need to add next data:
+In __api.py__ file, you need to add next data:
 + URI of your database **(mongo_uri)**
 + Name of your database **(mongo_db_name)**
 
@@ -170,22 +146,10 @@ Example of data:
 + mongo_db_name = "mongodb://localhost:27017/"
 
 ```python
-class Database(object):
+from config import db_name, db_user, db_password, db_host, db_port
 
-    def __init__(self):
-        try:
-            client = pymongo.MongoClient(mongo_uri)
-            self.mydb = client[mongo_db_name]
-            print("Connection to MongoDB successful")
-            # Create posts and users collections
-            self.mydb["posts"].drop()
-            self.posts_collection = self.mydb["posts"]
-            self.mydb["users"].drop()
-            self.users_collection = self.mydb["users"]
-            print("users collection created")
-            print("posts collection created")
-        except Exception as e:
-            print(f"The error '{e}' occurred")
+# Create an instances of the classes for the databases actions
+mongodb = MongoDB(mongo_uri, mongo_db_name)
 ```
 
 ***

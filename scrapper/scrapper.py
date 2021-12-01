@@ -5,6 +5,7 @@ from uuid import uuid1
 from threading import Thread
 from queue import Queue
 import json
+from typing import Dict, Union
 
 import requests
 from bs4 import BeautifulSoup
@@ -15,6 +16,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
 from config import chrome_path
+from utils import get_logger
 
 
 # Set the url from which you want to receive data
@@ -33,7 +35,7 @@ q = Queue()
 COUNTER: int = 1
 
 # Access the user's url
-headers: dict[str:str] = {
+headers: Dict[str, str] = {
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
               "image/avif,image/webp,image/apng,*/*;q=0.8,application"
               "/signed-exchange;v=b3;q=0.9",
@@ -41,6 +43,9 @@ headers: dict[str:str] = {
                   "/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari"
                   "/537.36"
 }
+
+# Initializes the logger
+logger = get_logger('%(asctime)s - %(threadName)s - %(levelname)s - %(message)s', logging.INFO)
 
 
 def measure(func):
@@ -61,26 +66,9 @@ def measure(func):
     return _time_it
 
 
-def get_logger():
-    """Function to configure the logger.
-
-    :return: logger instance
-    """
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s',
-    )
-    logger = logging.getLogger(__name__)
-    return logger
-
-
-# Initializes the logger
-logger = get_logger()
-
-
 @measure
 def main():
-    """Function to configure and launche the scrapper."""
+    """Function to configure and launch the scrapper."""
     driver = init_driver(chrome_path)
     get_data(driver, page_url)
     driver.quit()
@@ -90,9 +78,7 @@ def init_driver(executable_path: str):
     """Function to get the instance of chrome web driver.
 
     :param executable_path: path to chrome driver
-    :type executable_path: str
     :return: driver instance
-    :rtype: WebDriver
     """
     service = Service(executable_path)
     options = webdriver.ChromeOptions()
@@ -110,7 +96,6 @@ def get_data_from_user_url(user_url: str):
     """Collect required data from the user's page.
 
     :param  user_url: user page url
-    :type user_url: str
     :return: parameters with extracted user data
     :rtype: tuple
     """
@@ -124,8 +109,8 @@ def get_data_from_user_url(user_url: str):
 
     # Find required values in dictionary
     for key in data:
-        comment_karma = data[key]['karma']['fromComments']
-        post_karma = data[key]['karma']['fromPosts']
+        comment_karma: int = data[key]['karma']['fromComments']
+        post_karma: int = data[key]['karma']['fromPosts']
 
     # Find required data in html element by id
     user_karma_text: str = soup.find("span", {"id": "profile--id-card--highlight-tooltip--karma"}).text
@@ -146,7 +131,7 @@ def get_data_from_posts():
         # Gets an item from the queue in order to get all the necessary data from this item
         element = q.get()
         # Assign unique_id to post
-        unique_id = uuid1().hex
+        unique_id: str = uuid1().hex
 
         # Extract post data from html element
         post_date: str = element.find_element(By.CLASS_NAME, "_3jOxDPIQ0KaOWpzvSQo-1s").text
@@ -176,7 +161,7 @@ def get_data_from_posts():
             (post_karma, comment_karma, user_karma, user_cake_day) = get_data_from_user_url(user_url)
 
             # When all the data from one post is verified, create a dictionary and make post request
-            post = {
+            post: Dict[str, Union[str, int]] = {
                 "unique_id": unique_id,
                 "post_url": post_url,
                 "user_name": user_name,
@@ -188,8 +173,8 @@ def get_data_from_posts():
                 "user_karma": user_karma,
                 "user_cake_day": user_cake_day,
             }
-            requests.post('http://localhost:8087/posts/', json=post)
             logger.info("All data from post collected successfully")
+            requests.post('http://localhost:8087/posts/', json=post)
 
             # Check how many posts we already sent to api
             global COUNTER
@@ -208,8 +193,6 @@ def get_data(driver, url: str):
 
     :param driver: driver instance
     :param url: url of the page
-    :type url: str
-    :type driver: WebDriver
     """
     driver.get(url)
     actions = ActionChains(driver)
@@ -229,7 +212,7 @@ def get_data(driver, url: str):
             i += 1
 
         except NoSuchElementException as _ex:
-            logger.error("All posts are parsed")
+            logger.info("All posts are parsed")
             logger.error(_ex)
             break
 
