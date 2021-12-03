@@ -1,6 +1,5 @@
 import logging
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 from typing import List, Tuple, Dict, Union
 
 import pymongo
@@ -89,7 +88,7 @@ class MongoDB(DatabaseHandler):
                      }]
 
         database_data = []
-        if unique_id is not None:
+        if unique_id:
             match = {'$match': {'_id': f"{unique_id}"}}
             pipeline.append(match)
 
@@ -147,7 +146,6 @@ class PostgreSQL(DatabaseHandler):
         self.db_port = db_port
         self._create_tables()
 
-    @contextmanager
     def connection(self):
         """Function to connect to database and open a cursor"""
         try:
@@ -160,26 +158,16 @@ class PostgreSQL(DatabaseHandler):
             )
             connection.autocommit = True
             logger.info("Connection to PostgreSQL successful")
-            cursor = connection.cursor()
+            return connection
         except OperationalError as _ex:
             logger.error(f"Failed to initialize connection: {_ex}")
-            raise
-
-        try:
-            yield cursor
-        except Exception as _ex:
-            logger.error(_ex)
-            connection.rollback()
-        finally:
-            cursor.close()
-            connection.close()
 
     def get_from_database(self, unique_id: str = None):
         get_query = """SELECT posts.*, post_karma, comment_karma, user_karma, user_cake_day
                 FROM posts
                 INNER JOIN users
                 ON posts.user_name = users.user_name"""
-        if unique_id is not None:
+        if unique_id:
             get_query = get_query + f" WHERE unique_id = '{unique_id}';"
         return self._execute_read_query(get_query)
 
@@ -222,8 +210,9 @@ class PostgreSQL(DatabaseHandler):
 
         :param query: database query
         """
-        with self.connection() as cursor:
-            cursor.execute(query)
+        with self.connection() as conn, conn.cursor() as cur:
+            cur.execute(query)
+        conn.close()
 
     def _execute_read_query(self, query: str):
         """Function to send a query to the database. Return data from database.
@@ -232,9 +221,11 @@ class PostgreSQL(DatabaseHandler):
         :return: data from database
         :rtype: list
         """
-        with self.connection() as cursor:
-            cursor.execute(query)
-            return cursor.fetchall()
+        with self.connection() as conn, conn.cursor() as cur:
+            cur.execute(query)
+            result = cur.fetchall()
+        conn.close()
+        return result
 
     def _create_tables(self):
         """Function to create database tables."""

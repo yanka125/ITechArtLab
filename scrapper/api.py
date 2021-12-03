@@ -1,6 +1,6 @@
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from typing import List, Tuple, Dict, Union
+from typing import List, Tuple
 
 import utils
 from config import api_host, api_port
@@ -145,7 +145,7 @@ class ServiceHandler(BaseHTTPRequestHandler):
             elem = next((post for post in posts if post[utils.POST_PK] == unique_id), None)
 
             # If requested post exists in database
-            if elem is not None:
+            if elem:
                 mongodb.delete_from_database(unique_id)
                 postgresql.delete_from_database(unique_id)
                 self._set_headers(200)
